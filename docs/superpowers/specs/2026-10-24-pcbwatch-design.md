@@ -11,12 +11,13 @@ Local tool only: runs on your own machine, never deployed or exposed to a networ
 
 ## Shape
 
-One file, `pcbwatch.py`, Python standard library only. Uses the KiCad
-install's `kicad-cli` for rendering.
+One file, `pcbwatch.py`, Python standard library only (3.9+). Uses the
+KiCad install's `kicad-cli` (9+, checked at startup) for rendering.
+Packaged with a `pyproject.toml` (no dependencies) so it runs through uv.
 
 ```bash
-python3 pcbwatch.py                 # http://127.0.0.1:8765, opens the browser
-python3 pcbwatch.py --root ~/work --port 9000 --no-open
+uv run pcbwatch                     # http://127.0.0.1:8765, opens the browser
+uvx --from git+https://github.com/daponsr/pcb-viewer pcbwatch --root ~/work --port 9000 --no-open
 ```
 
 Binds `127.0.0.1` only.

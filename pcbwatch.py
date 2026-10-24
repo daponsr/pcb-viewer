@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = []
+# ///
 """pcbwatch: a live, read-only view of KiCad projects while agents edit them.
 
-    python3 pcbwatch.py [--root DIR] [--port N] [--no-open]
+    uv run pcbwatch [--root DIR] [--port N] [--no-open]
 
 Open the page, pick projects to watch, and every save re-renders the
 schematic sheets and the board through kicad-cli. Standard library only.
@@ -9,6 +13,7 @@ schematic sheets and the board through kicad-cli. Standard library only.
 
 import argparse
 import collections
+import glob
 import hashlib
 import json
 import os
@@ -23,6 +28,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+__version__ = "0.1.0"
+MIN_KICAD = 9  # --mode-multi layer export and the output naming relied on here
 CONFIG = Path(os.environ.get("PCBWATCH_CONFIG") or Path.home() / ".pcbwatch.json")
 # Used only if the board's own (layers ...) block cannot be read.
 FALLBACK_LAYERS = ["F.Cu", "B.Cu", "F.SilkS", "B.SilkS", "F.Mask", "B.Mask", "Edge.Cuts"]
@@ -32,16 +39,41 @@ POLL_SECONDS = 1.0
 
 
 def find_kicad_cli():
+    """KICAD_CLI, then PATH, then the default install location on macOS, Windows and Linux."""
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     candidates = [
         os.environ.get("KICAD_CLI"),
         shutil.which("kicad-cli"),
         "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
+        # Windows installs per version (C:\Program Files\KiCad\9.0\bin); newest first.
+        *sorted(glob.glob(os.path.join(program_files, "KiCad", "*", "bin", "kicad-cli.exe")), reverse=True),
         "/usr/bin/kicad-cli",
+        "/usr/local/bin/kicad-cli",
     ]
     for c in candidates:
-        if c and os.access(c, os.X_OK):
+        if c and os.path.isfile(c) and os.access(c, os.X_OK):
             return c
-    raise SystemExit("kicad-cli not found; set KICAD_CLI=/path/to/kicad-cli")
+    raise SystemExit("kicad-cli not found. Install KiCad 9+, or set KICAD_CLI=/path/to/kicad-cli")
+
+
+def check_kicad_version(cli):
+    """Refuse KiCad < 9 up front, rather than failing obscurely on the first export."""
+    try:
+        out = subprocess.run([cli, "version"], capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError) as e:
+        raise SystemExit(f"could not run {cli}: {e}")
+    m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", out)
+    if not m:
+        raise SystemExit(f"could not read the KiCad version from {cli!r}: {out.strip()!r}")
+    if int(m.group(1)) < MIN_KICAD:
+        raise SystemExit(f"pcbwatch needs KiCad {MIN_KICAD} or newer; {cli} is {m.group(0)}")
+    return m.group(0)
+
+
+def default_root():
+    """~/Documents/GitHub if it exists, else the current directory."""
+    p = Path.home() / "Documents" / "GitHub"
+    return str(p) if p.is_dir() else os.getcwd()
 
 
 def skip_dir(name):
@@ -730,18 +762,22 @@ tick(); setInterval(tick, 1000);
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=str(Path.home() / "Documents" / "GitHub"), help="where to look for projects")
+    ap.add_argument("--root", default=default_root(),
+                    help="where to look for projects (default: ~/Documents/GitHub if it exists, else the current dir)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-open", action="store_true", help="don't open a browser")
+    ap.add_argument("--version", action="version", version=f"pcbwatch {__version__}")
     args = ap.parse_args()
 
-    watcher = Watcher(find_kicad_cli(), os.path.expanduser(args.root))
+    cli = find_kicad_cli()
+    kicad = check_kicad_version(cli)
+    watcher = Watcher(cli, os.path.expanduser(args.root))
     threading.Thread(target=watcher.rescan, daemon=True).start()
     threading.Thread(target=watcher.loop, daemon=True).start()
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(watcher))
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"pcbwatch on {url}  (watching {len(watcher.watches)}, config {CONFIG})")
+    print(f"pcbwatch {__version__} on {url}  (KiCad {kicad}, root {watcher.root}, watching {len(watcher.watches)}, config {CONFIG})", flush=True)
     if not args.no_open:
         webbrowser.open(url)
     try:
