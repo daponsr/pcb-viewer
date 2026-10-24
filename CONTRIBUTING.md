@@ -20,6 +20,12 @@ files, cross-origin refusal, and unwatching.
 It needs KiCad 9 installed. On a non-macOS machine, point `PCBWATCH_TEMPLATE`
 at a KiCad project directory and `KICAD_CLI` at the binary.
 
+## Pull requests
+
+`main` only changes through pull requests, and every pull request needs an
+approval from the code owner ([`.github/CODEOWNERS`](.github/CODEOWNERS)).
+Force-pushes to `main` and deleting it are blocked for everyone.
+
 ## Rules of the house
 
 - **One file, standard library only.** People should be able to copy
