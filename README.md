@@ -14,11 +14,37 @@ the picture updates in place.
 
 ## Quick start
 
-You need **KiCad 9** (for `kicad-cli`) and **Python 3.9+**. No other dependencies.
+You need **KiCad 9 or newer** (for `kicad-cli`) and
+[**uv**](https://docs.astral.sh/uv/getting-started/installation/). uv fetches
+a suitable Python itself, and there are no other dependencies.
+
+Run it straight from GitHub, without cloning:
 
 ```bash
-python3 pcbwatch.py
+uvx --from git+https://github.com/daponsr/pcb-viewer pcbwatch
 ```
+
+Or from a clone:
+
+```bash
+git clone https://github.com/daponsr/pcb-viewer && cd pcb-viewer
+uv run pcbwatch
+```
+
+Or install it as a command:
+
+```bash
+uv tool install git+https://github.com/daponsr/pcb-viewer
+pcbwatch
+```
+
+<details><summary>Without uv</summary>
+
+`pcbwatch.py` is a single, standard-library-only file (Python 3.9+), so
+`python3 pcbwatch.py` works too. Copy that one file anywhere and run
+`uv run pcbwatch.py`: its inline script metadata tells uv which Python to use.
+
+</details>
 
 Your browser opens at <http://127.0.0.1:8765>. Click **+ watch** and choose
 a project, or paste a path to any project folder, `.kicad_pro`, `.kicad_sch`
@@ -64,13 +90,14 @@ or `.kicad_pcb`.
 
 | Flag | Default | |
 |---|---|---|
-| `--root DIR` | `~/Documents/GitHub` | where **+ watch** looks for projects |
+| `--root DIR` | `~/Documents/GitHub` if it exists, else the current directory | where **+ watch** looks for projects |
 | `--port N` | `8765` | |
 | `--no-open` | | don't open a browser tab |
+| `--version` | | print the version |
 
 | Environment | |
 |---|---|
-| `KICAD_CLI` | path to `kicad-cli` if it is not on `PATH` or in `/Applications/KiCad` |
+| `KICAD_CLI` | path to `kicad-cli`, if it isn't on `PATH` or in KiCad's default install location (macOS `/Applications/KiCad`, Windows `C:\Program Files\KiCad\<version>\bin`, Linux `/usr/bin`) |
 | `PCBWATCH_CONFIG` | where to keep the watch list (default `~/.pcbwatch.json`) |
 
 ## What it is not
@@ -86,7 +113,8 @@ or `.kicad_pcb`.
 
 | Symptom | Cause |
 |---|---|
-| `kicad-cli not found` | Set `KICAD_CLI=/path/to/kicad-cli`. On macOS it lives in `KiCad.app/Contents/MacOS/`. |
+| `kicad-cli not found` | Set `KICAD_CLI=/path/to/kicad-cli`. On macOS it lives in `KiCad.app/Contents/MacOS/`. A Flatpak KiCad has no `kicad-cli` on disk; use a distribution package or the PPA. |
+| `pcbwatch needs KiCad 9 or newer` | It relies on KiCad 9's per-layer SVG export. Upgrade KiCad. |
 | Project not in the **+ watch** list | It's outside `--root`, or under a hidden, `node_modules` or `*-backups` folder. Paste its path instead. |
 | Every layer marked as changed after a small edit | Something was placed outside the board outline. The view frames everything on the board, so that reframes every layer. Expected. |
 | Old KiCad 5 projects (`.sch`, no `.kicad_sch`) show no schematic | `kicad-cli` 9 renders only the KiCad 6+ formats. |

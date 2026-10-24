@@ -3,8 +3,11 @@
 A local, read-only, live viewer for KiCad projects. It runs on the user's
 own machine and is never deployed or exposed to a network.
 
-- Everything is in `pcbwatch.py`. Standard library only, and keep it that way.
-- Test: `python3 test_pcbwatch.py`. It drives the real server and real
+- Everything is in `pcbwatch.py`. Standard library only, Python 3.9+, and
+  keep it that way. `pyproject.toml` just packages that file for
+  `uv run pcbwatch` / `uvx`.
+- Test: `uv run python test_pcbwatch.py`, and with `--python 3.9 --isolated`
+  for the oldest supported Python. It drives the real server and real
   `kicad-cli` against a copy of KiCad's `Arduino_Uno` template. Run it
   after any change.
 - Behaviour of `kicad-cli` that the code depends on is listed in

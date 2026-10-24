@@ -3,13 +3,14 @@
 ## Run it from source
 
 ```bash
-python3 pcbwatch.py --no-open --port 8765
+uv run pcbwatch --no-open --port 8765
 ```
 
 ## Test
 
 ```bash
-python3 test_pcbwatch.py      # ~20 s
+uv run python test_pcbwatch.py                          # ~20 s
+uv run --python 3.9 --isolated python test_pcbwatch.py  # the oldest supported Python
 ```
 
 The test starts the real server against a copy of KiCad's bundled
@@ -17,8 +18,9 @@ The test starts the real server against a copy of KiCad's bundled
 watching, per-layer export, an edit to one layer, corrupted and repaired
 files, cross-origin refusal, and unwatching.
 
-It needs KiCad 9 installed. On a non-macOS machine, point `PCBWATCH_TEMPLATE`
-at a KiCad project directory and `KICAD_CLI` at the binary.
+It needs KiCad 9+ installed. It finds the template next to `kicad-cli` on
+macOS, Windows and Linux. Otherwise, point `PCBWATCH_TEMPLATE` at an
+`Arduino_Uno` template directory.
 
 ## Pull requests
 
@@ -28,9 +30,12 @@ Force-pushes to `main` and deleting it are blocked for everyone.
 
 ## Rules of the house
 
-- **One file, standard library only.** People should be able to copy
-  `pcbwatch.py` somewhere and run it. If a feature needs a dependency, it
-  probably belongs in a different tool.
+- **One file, standard library only, Python 3.9+.** People should be able
+  to copy `pcbwatch.py` somewhere and run it. `pyproject.toml` only
+  packages that file for uv; it must keep `dependencies = []`. If a
+  feature needs a dependency, it probably belongs in a different tool.
+- **Bump the version in both places**: `__version__` in `pcbwatch.py` and
+  `version` in `pyproject.toml`.
 - **Verify against the running `kicad-cli`, not its docs.** Several
   assumptions made while building this turned out to be wrong:
   - the exit code on a corrupt schematic (a `| grep` had hidden it);

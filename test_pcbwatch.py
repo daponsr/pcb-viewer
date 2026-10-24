@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end test: runs pcbwatch against a copy of a KiCad template project.
 
-    python3 test_pcbwatch.py
+    uv run python test_pcbwatch.py
 
 Asserts against the running server, not against the code.
 """
@@ -20,10 +20,26 @@ import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEMPLATE = Path(os.environ.get(
-    "PCBWATCH_TEMPLATE",
-    "/Applications/KiCad/KiCad.app/Contents/SharedSupport/template/Arduino_Uno",
-))
+sys.path.insert(0, str(HERE))
+import pcbwatch  # noqa: E402
+
+
+def find_template():
+    """KiCad's bundled Arduino_Uno template, wherever this OS's KiCad keeps it."""
+    if os.environ.get("PCBWATCH_TEMPLATE"):
+        return Path(os.environ["PCBWATCH_TEMPLATE"])
+    cli = Path(pcbwatch.find_kicad_cli()).resolve()
+    for share in (
+        cli.parent.parent / "SharedSupport" / "template",   # macOS: KiCad.app/Contents/MacOS/kicad-cli
+        cli.parent.parent / "share" / "kicad" / "template",  # Windows: KiCad/9.0/bin/kicad-cli.exe, Linux /usr/local
+        Path("/usr/share/kicad/template"),                   # Linux packages
+    ):
+        if (share / "Arduino_Uno").is_dir():
+            return share / "Arduino_Uno"
+    raise unittest.SkipTest("KiCad's Arduino_Uno template not found; set PCBWATCH_TEMPLATE")
+
+
+TEMPLATE = find_template()
 
 
 def free_port():
